@@ -1,9 +1,21 @@
 
+/*
+ * Mag_Cal.ino
+ * 
+ * Hyperbolic Labs 02/25/20
+ * 
+ * Calibration test for MMC5983MA magnetometer sensor. This program 
+ * calculates offset coefficients for hard-iron compensation as well 
+ * as sensor spherical gain compensation for soft-iron proximity effects.
+ * To get the most accurate calibration coefficients, rotate the sensor 
+ * in a figure-eight pattern. 
+ * 
+ */
+
+
 #include "Wire.h"
 #include "MahonyAHRS.h"
 #include "MadgwickAHRS.h"
-
-
 
 #define MAG_ODR_1HZ       0b1001
 #define MAG_ODR_10HZ      0b1010
@@ -19,17 +31,17 @@
 #define LSB_PER_GAUSS   4096
 
 
-float xmax, ymax, zmax;
-float xmin, ymin, zmin;
-float xoffs, yoffs, zoffs;
-float xscale, yscale, zscale;
+float xmax, ymax, zmax;         //max recorded field for each axis
+float xmin, ymin, zmin;         //min recorded field for each axis
+float xoffs, yoffs, zoffs;      //calculated offset for each axis
+float xscale, yscale, zscale;   //calculated gain multiplier for each axis
 
-float xalign[3] = {0, 0, 0};
-float yalign[3] = {0, 0, 0};
-float zalign[3] = {0, 0, 0};
+float xalign[3] = {0, 0, 0};    //sensor reading most aligned with x axis
+float yalign[3] = {0, 0, 0};    //sensor reading most aligned with y axis
+float zalign[3] = {0, 0, 0};    //sensor reading most aligned with z axis
 
-float x, y, z;
-int16_t rx, ry, rz;
+float x, y, z;                  //temporary variables
+int16_t rx, ry, rz;             
 
 
 
@@ -38,26 +50,31 @@ void setup(){
   Serial.begin(115200);
   Wire.begin();
 
-  writeReg(MAG_ADDR, 0x09, 0b00100001);
-  writeReg(MAG_ADDR, 0x0A, 0b00000000);
-  writeReg(MAG_ADDR, 0x0B, 0b10110000);//| MAG_ODR_200HZ); //set/reset pulse every 100 samples
+  writeReg(MAG_ADDR, 0x0A, 0b00000000);     //enable all axes, 100Hz bandwidth (8msec conversion)
+  writeReg(MAG_ADDR, 0x0B, 0b10110000);     //set/reset pulse every 100 samples
+  writeReg(MAG_ADDR, 0x09, 0b00100001);     //enable auto set/reset feature, send measurement request 
 }
 
 
 
 void loop(){
 
-  if(Serial.available()){
+  if(Serial.available()){       //check if character has been sent
    
-    if(Serial.read() == 'x')
+    if(Serial.read() == 'x'){   //if character is 'x', conclude calibration routine and print results
       printStats();
+      while(true);
+    }
           
-    while(Serial.available())
+    while(Serial.available())   //clear out any remaining characters
       Serial.read();
   }
 
-  readMagRaw(rx, ry, rz);
-  getFloatMag(rx, ry, rz, x, y, z);
+  readMagRaw(rx, ry, rz);             //get raw 16-bit magnetometer values for each axis
+  getFloatMag(rx, ry, rz, x, y, z);   //convert raw measurements to gauss
+
+
+  //check if current sample is aligned with x, y or z axis
 
   if(abs(x) > xalign[0]){
     xalign[0] = x;
@@ -76,9 +93,11 @@ void loop(){
   }
 
 
+  //check for any min/max conditions
+
   bool flag = false;
 
-  if(x < xmin){
+  if(x < xmin){ 
     xmin = x;
     flag = true;
   }
@@ -103,9 +122,10 @@ void loop(){
   else if(z > zmax){
     zmax = z;
     flag = true;
-  }
+  }  
 
-  if(flag){
+  if(flag){   //if min/max has changed, then print to Serial monitor
+    
     Serial.print("Xmin: "); Serial.print(xmin); 
     Serial.print("\tYmin: "); Serial.print(ymin); 
     Serial.print("\tZmin: "); Serial.println(zmin); 
@@ -143,60 +163,33 @@ void printStats(){
 
 void getFloatMag(int16_t x, int16_t y, int16_t z, float &xf, float &yf, float &zf){
   
-    xf = (float)(x)/LSB_PER_GAUSS;  
-    yf = (float)(y)/LSB_PER_GAUSS;  
-    zf = (float)(z)/LSB_PER_GAUSS;  
+  xf = (float)(x)/LSB_PER_GAUSS;  
+  yf = (float)(y)/LSB_PER_GAUSS;  
+  zf = (float)(z)/LSB_PER_GAUSS;  
 }
 
 
 
 void readMagRaw(int16_t &x, int16_t &y, int16_t &z){
 
-  writeReg(MAG_ADDR, 0x09, 0b00001000);
+  writeReg(MAG_ADDR, 0x09, 0b00001000);   //perform set pulse
   delay(5);
-  writeReg(MAG_ADDR, 0x09, 0b00010000);  
+  writeReg(MAG_ADDR, 0x09, 0b00010000);   //perform reset pulse
   delay(5);
-  writeReg(MAG_ADDR, 0x09, 0b00000001);  
+  writeReg(MAG_ADDR, 0x09, 0b00000001);   //request new ADC measurement
   delay(10);
 
   Wire.beginTransmission(MAG_ADDR);
-  Wire.write(0x00);
+  Wire.write(0x00);                       //start at X axis MSB
   Wire.endTransmission();
-  Wire.requestFrom(MAG_ADDR, 6);
-  x = ((Wire.read() << 8) | Wire.read()) - 32768;
-  y = ((Wire.read() << 8) | Wire.read()) - 32768;
-  z = ((Wire.read() << 8) | Wire.read()) + 32768;
-////  x = Wire.read() | (Wire.read() << 8);
-////  y = Wire.read() | (Wire.read() << 8);
-////  z = Wire.read() | (Wire.read() << 8);
-  Serial.print("X: "); Serial.println(x);
-  Serial.print("Y: "); Serial.println(y);
-  Serial.print("Z: "); Serial.println(z);
+  Wire.requestFrom(MAG_ADDR, 6);          //read until Z axis LSB
+  x = ((Wire.read() << 8) | Wire.read()) - 32768;   //16-bit unsigned format, shifted
+  y = ((Wire.read() << 8) | Wire.read()) - 32768;   //16-bit unsigned format, shifted
+  z = ((Wire.read() << 8) | Wire.read()) + 32768;   //Z axis seems to be inverted, not sure why
 
-//  Wire.beginTransmission(MAG_ADDR);
-//  Wire.write(0x00);
-//  Wire.endTransmission();
-//  Wire.requestFrom(MAG_ADDR, 2);
-//  Serial.print("X: ");
-//  Serial.print(Wire.read(), BIN);
-//  Serial.print("\t");
-//  Serial.println(Wire.read(), BIN);
-//  Wire.beginTransmission(MAG_ADDR);
-//  Wire.write(0x02);
-//  Wire.endTransmission();
-//  Wire.requestFrom(MAG_ADDR, 2);
-//  Serial.print("X: ");
-//  Serial.print(Wire.read(), BIN);
-//  Serial.print("\t");
-//  Serial.println(Wire.read(), BIN);
-//  Wire.beginTransmission(MAG_ADDR);
-//  Wire.write(0x04);
-//  Wire.endTransmission();
-//  Wire.requestFrom(MAG_ADDR, 2);
-//  Serial.print("X: ");
-//  Serial.print(Wire.read(), BIN);
-//  Serial.print("\t");
-//  Serial.println(Wire.read(), BIN);
+//  Serial.print("X: "); Serial.println(x);
+//  Serial.print("Y: "); Serial.println(y);
+//  Serial.print("Z: "); Serial.println(z);
 }
 
 
