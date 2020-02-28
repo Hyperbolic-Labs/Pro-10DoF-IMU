@@ -1,5 +1,5 @@
 import processing.serial.*;
-import java.io.FileWriter; 
+import java.io.FileWriter;
 import java.io.*;
 FileWriter fw;
 BufferedWriter bw;
@@ -74,7 +74,7 @@ void draw()
   //drawText();
 
   popMatrix(); // end of object
-  
+
   scale(1);
   drawTextM(); //after popMatrix so text won't rotate
 
@@ -115,7 +115,7 @@ void keyPressed()
       keyAscii += 32;
     }
     switch (keyAscii) {
-      
+
       case 'h':
         showHelp = !showHelp;
         break;
@@ -131,7 +131,7 @@ void keyPressed()
       case 'l':
         createLogFile = !createLogFile;
         appendLogFile = !appendLogFile;
-        break;    
+        break;
       case 'z':
         yawOffset -= 1.0f;
         yawOffset = yawOffset % 360.f;
@@ -149,14 +149,14 @@ void keyPressed()
 void drawTextM() {
      textSize(16);
   if (showHelp) {
-    
+
     //white-transparent background
     translate(0,0,159);
     fill(255,192);
     rectMode(CENTER);
     rect(0,0,500,400);
     translate(0,0,-159); //back to origin
-    
+
     //text
     fill(0);
     text("press H to show/hide Help", -190, -120, 160);
@@ -166,19 +166,19 @@ void drawTextM() {
     text("press L to open to start/stop data Logging", -190, 40, 160);
     text("press Z or X to adjust yaw to match view angle", -190, 80, 160);
   }
-  
+
   if (showFPS) {
     fill(255,255,255);
     text("FPS:",-190,160,130);
     text((int)frameRate, -150,160,130);
   }
-  
+
   if (showUpdateRate) {
     fill(255,255,255);
     text("Updates per sec:",20,160,130);
     text(updatesPerSec,160,160,130);
   }
-  
+
   if (showYPR) {
     fill(255,255,255);
     text("Yaw",80,-190,130);
@@ -188,18 +188,18 @@ void drawTextM() {
     text("Roll",80,-130,130);
     text(nfp(roll,3,2),130,-130,130);
   }
-  
+
   if (createLogFile) {
   fill(255,255,255);
   text("CREATE",-80,-190,130);
   }
-  
+
   if (appendLogFile) {
   fill(255,255,255);
-  text("APPEND",-80,-160,130);      
+  text("APPEND",-80,-160,130);
   }
-   
-  
+
+
 }
 
 void drawPropShield()
@@ -278,12 +278,12 @@ void drawPropShield()
   box(6,4,8);
   translate(0,0,-20);
   box(6,4,8);
-  
+
   //reset position to zero
   translate(-76.5,4,10);
 }
 
-void drawTeensy() { 
+void drawTeensy() {
   /* Draw Teensy 3.x Board */
   translate(0, -26.5, 0); // set position of Teensy 3.x
   stroke(0,90,0); // black outline
@@ -291,13 +291,13 @@ void drawTeensy() {
   //stroke(40, 0, 60); // set outline colour
   //fill(90, 0, 120); // set fill colour Osh Park Purble
   box(140, 6, 70); // draw Arduino board base shape
-  
+
   /* Draw MCU */
   translate(20, -4, 0); // set position to other edge of Teensy box
   stroke(50, 50, 50); // set outline colour
   fill(0, 0, 0); // set fill colour
   box(40, 2, 40); // draw MCU
-  
+
    fill(255, 215, 0); // gold color
   noStroke();
 
@@ -321,13 +321,13 @@ void drawTeensy() {
     sphere(4.5);
     translate(0,0,10);
   }
-    
+
   /* Draw USB Cable */
   translate(-125, -6, -30); // set position
   stroke(40, 0, 60); // set outline colour
   fill(200, 200, 200); // set fill colour
   box(25, 8, 35); // draw USB Connector
-  
+
   /* Draw Headers */
   stroke(0); // set outline colour to black
   fill(80); // set fill colour to dark grey
@@ -359,7 +359,7 @@ void createLogFile() { // Press a key to save the data
     FileWriter fw = new FileWriter(file, false);  ///true = append
     BufferedWriter bw = new BufferedWriter(fw);
     PrintWriter pw = new PrintWriter(bw);
- 
+
     pw.println("Yaw, Pitch, Roll");
     pw.println("deg, deg, deg");
     pw.close();
@@ -375,20 +375,20 @@ void appendLogFile() { // Press a key to save the data
     File file =new File("C:/Temp/IMUDATA.csv + String.valueOf(year())");
     // chemin = dataPath;
     // positions.txt== your file;
- 
+
     if (!file.exists()) {
       file.createNewFile();
     }
- 
+
     FileWriter fw = new FileWriter(file, true);///true = append
     BufferedWriter bw = new BufferedWriter(fw);
     PrintWriter pw = new PrintWriter(bw);
- 
+
     pw.print(yaw);
     pw.print(", ");
     pw.print(pitch);
     pw.print(", ");
-    pw.println(roll); 
+    pw.println(roll);
     pw.close();
   }
   catch(IOException ioe) {
